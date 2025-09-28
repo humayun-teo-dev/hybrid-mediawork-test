@@ -11,7 +11,7 @@ use Illuminate\Support\Carbon;
 class MerchantController extends Controller
 {
     public function __construct(
-        MerchantService $merchantService
+        protected MerchantService $merchantService
     ) {}
 
     /**
@@ -22,6 +22,23 @@ class MerchantController extends Controller
      */
     public function orderStats(Request $request): JsonResponse
     {
-        // TODO: Complete this method
+        $from = Carbon::parse($request->input('from'));
+        $to = Carbon::parse($request->input('to'));
+        
+        $merchant = $request->user()->merchant;
+        
+        $orders = $merchant->orders()
+            ->whereBetween('created_at', [$from, $to])
+            ->get();
+        
+        $count = $orders->count();
+        $revenue = $orders->sum('subtotal');
+        $commissionsOwed = $orders->where('affiliate_id', '!=', null)->sum('commission_owed');
+        
+        return response()->json([
+            'count' => $count,
+            'revenue' => $revenue,
+            'commissions_owed' => $commissionsOwed
+        ]);
     }
 }
